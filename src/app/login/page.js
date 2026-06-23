@@ -31,7 +31,7 @@ function LoginForm() {
   return (
     <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-        🎯 Trello Klón
+        Volcano L2 Action Tracker
       </h1>
       {verified && (
         <div className="bg-green-50 text-green-600 text-sm px-3 py-2 rounded-lg mb-4">
