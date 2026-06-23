@@ -22,7 +22,7 @@ function getNotificationMessage(type, data) {
 function emailTemplate(message, boardId) {
   return `
     <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-      <h2 style="color: #0079bf;">🎯 Trello Klón — Értesítés</h2>
+      <h2 style="color: #0079bf;">Volcano L2 Action Tracker — Értesítés</h2>
       <p style="color: #333; font-size: 16px;">${message}</p>
       <a
         href="${process.env.NEXTAUTH_URL}/board/${boardId}"
@@ -66,7 +66,7 @@ export async function sendNotification({
       await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL,
         to: user.email,
-        subject: `🎯 Trello Klón — ${message}`,
+        subject: `Volcano L2 Action Tracker — ${message}`,
         html: emailTemplate(message, boardId),
       });
     } catch (err) {
@@ -82,10 +82,10 @@ export async function sendVerificationEmail(email, name, token) {
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL,
       to: email,
-      subject: "🎯 Trello Klón — Email hitelesítés",
+      subject: "Volcano L2 Action Tracker — Email hitelesítés",
       html: `
         <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-          <h2 style="color: #0079bf;">🎯 Trello Klón</h2>
+          <h2 style="color: #0079bf;">Volcano Action Tracker</h2>
           <p style="color: #333;">Szia ${name}!</p>
           <p style="color: #333;">Kattints az alábbi gombra az email címed hitelesítéséhez:</p>
           <a

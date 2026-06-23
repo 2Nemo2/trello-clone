@@ -100,7 +100,7 @@ export default function List({
             value={newCardTitle}
             onChange={(e) => setNewCardTitle(e.target.value)}
             placeholder="Kártya neve..."
-            className="w-full rounded p-2 text-sm border outline-none"
+            className="w-full rounded p-2 text-sm border outline-none text-gray-500"
             rows={2}
             autoFocus
             onKeyDown={(e) => {
