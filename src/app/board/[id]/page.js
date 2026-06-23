@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   DndContext,
   closestCorners,
@@ -33,6 +33,7 @@ export default function BoardPage() {
   const [members, setMembers] = useState([]);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [memberError, setMemberError] = useState("");
+  const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -302,13 +303,11 @@ export default function BoardPage() {
             </button>
           )}
           <button
-            onClick={() => {
-              setShowActivity(true);
-              fetchActivities();
-            }}
+            type="button"
+            onClick={() => router.push("/")}
             className="bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-2 rounded-lg transition"
           >
-            📋 Aktivitás
+            Vissza a táblákhoz
           </button>
         </div>
       </div>
