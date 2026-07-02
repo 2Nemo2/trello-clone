@@ -5,10 +5,9 @@ import {
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
+import { useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import Card from "./Card";
-import { useDroppable } from "@dnd-kit/core";
-
 export default function List({
   list,
   cards,
@@ -28,13 +27,11 @@ export default function List({
     transition,
     isDragging,
   } = useSortable({ id: list.id });
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-
   async function fetchCards() {
     const res = await fetch(`/api/cards?listId=${list.id}`);
     const data = await res.json();
@@ -44,7 +41,7 @@ export default function List({
     fetchCards();
   }, [list.id]);
   async function handleCreateCard(e) {
-    e.preventDefault();
+    e?.preventDefault();
     if (!newCardTitle.trim()) return;
     await fetch("/api/cards", {
       method: "POST",
@@ -54,86 +51,99 @@ export default function List({
     setNewCardTitle("");
     fetchCards();
   }
-
   return (
     <div
       ref={setSortRef}
       style={style}
-      className="bg-gray-100 rounded-lg p-3 w-64 flex-shrink-0"
+      className="w-72 flex-shrink-0 flex flex-col max-h-[calc(100vh-120px)]"
     >
-      <div className="flex justify-between items-center mb-2">
+      {/* Lista fejléc */}
+      <div className="bg-gray-800 rounded-t-xl px-3 py-2.5 flex items-center justify-between">
         <h2
           {...attributes}
           {...listeners}
-          className="font-semibold text-gray-800 cursor-grab active:cursor-grabbing"
+          className="font-semibold text-white text-sm cursor-grab active:cursor-grabbing flex-1 truncate"
         >
           {list.title}
         </h2>
-        {["owner", "admin"].includes(userRole) && (
-          <button
-            onClick={async () => {
-              if (!confirm(`Törlöd a "${list.title}" listát?`)) return;
-              await fetch(`/api/lists/${list.id}`, { method: "DELETE" });
-              onListDelete(list.id);
-            }}
-            className="text-gray-400 hover:text-red-500 text-sm px-1"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-      {/* Kártyák - sorba rendezhető terület */}
-      <SortableContext
-        items={cards.map((c) => c.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div ref={setDropRef} className="flex flex-col gap-2 mb-2 min-h-[10px]">
-          {cards.map((card) => (
-            <Card key={card.id} card={card} onClick={onCardClick} />
-          ))}
-        </div>
-      </SortableContext>
-      {/* Új kártya form */}
-      {showForm ? (
-        <form onSubmit={handleCreateCard}>
-          <textarea
-            value={newCardTitle}
-            onChange={(e) => setNewCardTitle(e.target.value)}
-            placeholder="Kártya neve..."
-            className="w-full rounded p-2 text-sm border outline-none text-gray-500"
-            rows={2}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleCreateCard(e);
-              }
-            }}
-          />
-          <div className="flex gap-2 mt-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-xs text-gray-400 bg-gray-700 px-1.5 py-0.5 rounded-full">
+            {cards.length}
+          </span>
+          {["owner", "admin"].includes(userRole) && (
             <button
-              type="submit"
-              className="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700"
-            >
-              Hozzáadás
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="text-sm text-gray-500 px-2"
+              onClick={async () => {
+                if (!confirm(`Törlöd a "${list.title}" listát?`)) return;
+                await fetch(`/api/lists/${list.id}`, { method: "DELETE" });
+                onListDelete(list.id);
+              }}
+              className="text-gray-400 hover:text-red-400 text-xs px-1.5 py-0.5 rounded transition ml-1"
             >
               ✕
             </button>
-          </div>
-        </form>
-      ) : (
-        <button
-          onClick={() => setShowForm(true)}
-          className="text-sm text-gray-500 hover:bg-gray-200 w-full text-left p-2 rounded"
+          )}
+        </div>
+      </div>
+      {/* Kártyák */}
+      <div className="bg-gray-800/90 flex-1 overflow-y-auto px-2 py-2">
+        <SortableContext
+          items={cards.map((c) => c.id)}
+          strategy={verticalListSortingStrategy}
         >
-          + Kártya hozzáadása
-        </button>
-      )}
+          <div ref={setDropRef} className="flex flex-col gap-2 min-h-[8px]">
+            {cards.map((card) => (
+              <Card key={card.id} card={card} onClick={onCardClick} />
+            ))}
+          </div>
+        </SortableContext>
+      </div>
+      {/* Új kártya */}
+      <div className="bg-gray-800 rounded-b-xl px-2 py-2">
+        {showForm ? (
+          <div>
+            <textarea
+              value={newCardTitle}
+              onChange={(e) => setNewCardTitle(e.target.value)}
+              placeholder="Kártya neve..."
+              className="w-full bg-white rounded-lg p-2 text-sm text-gray-800 outline-none resize-none border-2 border-blue-400"
+              rows={2}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleCreateCard(e);
+                }
+                if (e.key === "Escape") setShowForm(false);
+              }}
+            />
+            <div className="flex gap-2 mt-1.5">
+              <button
+                onClick={handleCreateCard}
+                className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium"
+              >
+                Hozzáadás
+              </button>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setNewCardTitle("");
+                }}
+                className="text-gray-400 hover:text-white text-xs px-2 py-1.5 rounded-lg transition"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full text-gray-400 hover:text-white hover:bg-gray-700 text-sm py-1.5 px-2 rounded-lg transition flex items-center gap-1.5"
+          >
+            <span className="text-base leading-none">+</span>
+            Kártya hozzáadása
+          </button>
+        )}
+      </div>
     </div>
   );
 }

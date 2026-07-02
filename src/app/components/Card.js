@@ -1,6 +1,14 @@
 "use client";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+const LABEL_COLORS = {
+  Fontos: "bg-red-500",
+  Haladó: "bg-orange-400",
+  Folyamatban: "bg-yellow-400",
+  Kész: "bg-green-500",
+  Kérdés: "bg-blue-500",
+  Ötlet: "bg-purple-500",
+};
 export default function Card({ card, onClick }) {
   const {
     attributes,
@@ -13,75 +21,82 @@ export default function Card({ card, onClick }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
+  const isOverdue = card.dueDate && new Date(card.dueDate) < new Date();
+  const isToday =
+    card.dueDate &&
+    new Date(card.dueDate).toDateString() === new Date().toDateString();
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="bg-white rounded p-2 shadow text-sm text-gray-800 cursor-grab active:cursor-grabbing"
+      className="bg-gray-700 hover:bg-gray-600 rounded-xl shadow group transition cursor-pointer"
     >
-      <div className="flex justify-between items-start gap-1">
+      {/* Címkék */}
+      {card.labels?.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-3 pt-2.5">
+          {card.labels.map((label) => (
+            <span
+              key={label}
+              className={`text-xs text-white px-2 py-0.5 rounded-full font-medium ${LABEL_COLORS[label] || "bg-gray-500"}`}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="px-3 py-2.5 flex items-start gap-2">
         {/* Húzható terület */}
-        <span {...listeners} className="flex-1">
-          {card.title}
+        <div {...listeners} className="flex-1 min-w-0">
+          <p className="text-white text-sm font-medium leading-snug">
+            {card.title}
+          </p>
           {card.description && (
-            <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+            <p className="text-gray-400 text-xs mt-1 line-clamp-2">
               {card.description}
             </p>
           )}
-          {/* Címkék */}
-          {card.labels?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {card.labels.map((label) => {
-                const found = [
-                  { text: "Fontos", color: "bg-red-500" },
-                  { text: "Haladó", color: "bg-orange-400" },
-                  { text: "Folyamatban", color: "bg-yellow-400" },
-                  { text: "Kész", color: "bg-green-500" },
-                  { text: "Kérdés", color: "bg-blue-500" },
-                  { text: "Ötlet", color: "bg-purple-500" },
-                ].find((l) => l.text === label);
-                return (
-                  <span
-                    key={label}
-                    className={`text-xs text-white px-1.5 py-0.5 rounded-full font-medium ${found?.color || "bg-gray-400"}`}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-          {/* Határidő + assignee-k */}
-          <div className="flex gap-2 mt-1 flex-wrap items-center">
-            {card.dueDate && (
-              <span
-                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                  new Date(card.dueDate) < new Date()
-                    ? "bg-red-100 text-red-600"
-                    : "bg-green-100 text-green-600"
-                }`}
-              >
-                📅 {new Date(card.dueDate).toLocaleDateString("hu-HU")}
-              </span>
-            )}
-            {card.assignees?.length > 0 && (
-              <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-medium">
-                👥 {card.assignees.map((a) => a.userName).join(", ")}
-              </span>
-            )}
-          </div>
-        </span>
-        {/* Kattintható gomb a részletekhez */}
+        </div>
+        {/* Szerkesztés gomb */}
         <button
           onClick={() => onClick(card)}
-          className="text-gray-400 hover:text-gray-600 text-xs px-1 shrink-0"
+          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition flex-shrink-0 p-0.5 rounded"
         >
           ✎
         </button>
       </div>
+      {/* Meta adatok */}
+      {(card.dueDate ||
+        card.assignees?.length > 0 ||
+        card.comments?.length > 0) && (
+        <div className="flex flex-wrap gap-1.5 px-3 pb-2.5">
+          {card.dueDate && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
+                isOverdue
+                  ? "bg-red-500/20 text-red-400"
+                  : isToday
+                    ? "bg-orange-500/20 text-orange-400"
+                    : "bg-green-500/20 text-green-400"
+              }`}
+            >
+              📅 {new Date(card.dueDate).toLocaleDateString("hu-HU")}
+            </span>
+          )}
+          {card.assignees?.length > 0 && (
+            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+              👥 {card.assignees.length}
+            </span>
+          )}
+          {card.comments?.length > 0 && (
+            <span className="text-xs bg-gray-600 text-gray-300 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+              💬 {card.comments.length}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

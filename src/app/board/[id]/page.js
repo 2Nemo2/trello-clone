@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   DndContext,
   closestCorners,
@@ -33,6 +34,7 @@ export default function BoardPage() {
   const [members, setMembers] = useState([]);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [memberError, setMemberError] = useState("");
+  const [showNewList, setShowNewList] = useState(false);
   const router = useRouter();
 
   const sensors = useSensors(
@@ -113,8 +115,10 @@ export default function BoardPage() {
       body: JSON.stringify({ title: newListTitle, boardId }),
     });
     setNewListTitle("");
+    setShowNewList(false);
     fetchLists();
   }
+
   // Megkeresi, melyik listában van egy adott kártya ID
   function findListIdByCardId(cardId) {
     for (const listId in cardsByList) {
@@ -283,233 +287,158 @@ export default function BoardPage() {
   if (!board) return <div className="p-8">Betöltés...</div>;
 
   return (
-    <main
-      className="min-h-screen p-8"
+    <div
+      className="min-h-screen flex flex-col"
       style={{ backgroundColor: board.background }}
     >
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-        <h1 className="text-3xl font-bold text-white">{board.title}</h1>
-        <div className="flex gap-2">
-          {/* Tagok kezelése — csak owner és admin látja */}
+      {/* Fejléc */}
+      <header className="bg-black/20 backdrop-blur-sm px-6 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="text-white/70 hover:text-white transition text-sm flex items-center gap-1"
+          >
+            ← Főoldal
+          </Link>
+          <span className="text-white/30">|</span>
+          <h1 className="text-white font-bold text-lg">{board.title}</h1>
+        </div>
+        <div className="flex items-center gap-2">
           {["owner", "admin"].includes(userRole) && (
             <button
               onClick={() => {
                 setShowMembers(true);
                 fetchMembers();
               }}
-              className="bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-2 rounded-lg transition"
+              className="bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition flex items-center gap-1"
             >
-              👥 Tagok
+              👥 <span className="hidden sm:inline">Tagok</span>
             </button>
           )}
           <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-2 rounded-lg transition"
+            onClick={() => {
+              setShowActivity(true);
+              fetchActivities();
+            }}
+            className="bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-1.5 rounded-lg transition flex items-center gap-1"
           >
-            Vissza a táblákhoz
+            📋 <span className="hidden sm:inline">Aktivitás</span>
           </button>
         </div>
-      </div>
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        ondragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        {/* Listák vízszintes sorba rendezése */}
-        <SortableContext
-          items={lists.map((l) => l.id)}
-          strategy={horizontalListSortingStrategy}
+      </header>
+      {/* Listák területe */}
+      <div className="flex-1 overflow-x-auto p-6">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto items-start">
-            {lists.map((list) => (
-              <List
-                key={list.id}
-                list={list}
-                cards={cardsByList[list.id] || []}
-                setCardsForList={setCardsForList}
-                onCardClick={(card) => setSelectedCard(card)}
-                onListDelete={handleListDelete}
-                userRole={userRole}
-              />
-            ))}
-            {/* Új lista hozzáadása */}
-            <form onSubmit={handleCreateList} className="w-64 flex-shrink-0">
-              <input
-                type="text"
-                value={newListTitle}
-                onChange={(e) => setNewListTitle(e.target.value)}
-                placeholder="+ Új lista neve..."
-                className="bg-white/80 rounded-lg p-3 w-full outline-none text-gray-800 placeholder:text-gray-500"
-              />
-            </form>
-          </div>
-        </SortableContext>
-        {/* Ez mutatja a húzott kártyát "lebegve" */}
-        <DragOverlay>
-          {activeCard ? (
-            <div className="bg-white rounded p-2 shadow text-sm text-gray-800 rotate-2">
-              {activeCard.title}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-
-      {/* Tagok kezelő panel */}
-      {showMembers && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setShowMembers(false)}
-          />
-          <div className="relative bg-white w-full max-w-sm h-full shadow-xl flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="font-semibold text-gray-800">👥 Tagok kezelése</h2>
-              <button
-                onClick={() => setShowMembers(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4 border-b">
-              <p className="text-xs text-gray-500 mb-2">
-                Tag hozzáadása email alapján:
-              </p>
-              <form onSubmit={handleAddMember} className="flex gap-2">
-                <input
-                  type="email"
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+          <SortableContext
+            items={lists.map((l) => l.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="flex gap-3 items-start h-full">
+              {lists.map((list) => (
+                <List
+                  key={list.id}
+                  list={list}
+                  cards={cardsByList[list.id] || []}
+                  setCardsForList={setCardsForList}
+                  onCardClick={(card) => setSelectedCard(card)}
+                  onListDelete={handleListDelete}
+                  userRole={userRole}
                 />
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700"
-                >
-                  +
-                </button>
-              </form>
-              {memberError && (
-                <p className="text-red-500 text-xs mt-1">{memberError}</p>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {/* Tulajdonos */}
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">
-                    {board.userId === members[0]?.userId ? "Te" : "Tulajdonos"}
-                  </p>
-                </div>
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
-                  👑 Owner
-                </span>
-              </div>
-              {/* Tagok */}
-              {members.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg gap-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
-                      {member.name}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {member.email}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {userRole === "owner" && (
-                      <select
-                        value={member.role}
-                        onChange={(e) =>
-                          handleRoleChange(member.userId, e.target.value)
-                        }
-                        className="text-xs border rounded px-1 py-1 text-gray-600 outline-none"
-                      >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    )}
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        member.role === "admin"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {member.role === "admin" ? "🔑 Admin" : "👤 Member"}
-                    </span>
-                    {userRole === "owner" && (
+              ))}
+              {/* Új lista */}
+              <div className="w-72 flex-shrink-0">
+                {showNewList ? (
+                  <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-3">
+                    <input
+                      type="text"
+                      value={newListTitle}
+                      onChange={(e) => setNewListTitle(e.target.value)}
+                      placeholder="Lista neve..."
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCreateList(e);
+                        if (e.key === "Escape") setShowNewList(false);
+                      }}
+                      className="w-full bg-white rounded-lg px-3 py-2 text-gray-800 outline-none text-sm mb-2"
+                    />
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleRemoveMember(member.userId)}
-                        className="text-gray-400 hover:text-red-500 text-xs"
+                        onClick={handleCreateList}
+                        className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1.5 rounded-lg transition"
+                      >
+                        Hozzáadás
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowNewList(false);
+                          setNewListTitle("");
+                        }}
+                        className="text-gray-300 hover:text-white text-sm px-2 py-1.5 rounded-lg transition"
                       >
                         ✕
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {members.length === 0 && (
-                <p className="text-sm text-gray-400 text-center">
-                  Még nincsenek tagok.
-                </p>
-              )}
+                ) : (
+                  <button
+                    onClick={() => setShowNewList(true)}
+                    className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-sm px-4 py-3 rounded-xl transition flex items-center gap-2"
+                  >
+                    <span className="text-lg leading-none">+</span>
+                    Lista hozzáadása
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Aktivitás gomb */}
-      <button
-        onClick={() => {
-          setShowActivity(true);
-          fetchActivities();
-        }}
-        className="fixed bottom-6 right-6 bg-white text-gray-700 shadow-lg rounded-full px-4 py-2 text-sm font-medium hover:bg-gray-50 transition"
-      >
-        📋 Aktivitás
-      </button>
+          </SortableContext>
+          <DragOverlay>
+            {activeCard ? (
+              <div className="bg-white rounded-xl p-3 shadow-2xl text-sm text-gray-800 rotate-2 opacity-90">
+                {activeCard.title}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
       {/* Aktivitás oldalsáv */}
       {showActivity && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div
-            className="absolute inset-0 bg-black/30"
+            className="absolute inset-0 bg-black/40"
             onClick={() => setShowActivity(false)}
           />
-          <div className="relative bg-white w-full max-w-sm h-full shadow-xl flex flex-col">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="font-semibold text-gray-800">
-                📋 Aktivitás napló
-              </h2>
+          <div className="relative bg-gray-900 w-full max-w-sm h-full shadow-2xl flex flex-col border-l border-gray-700">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h2 className="font-semibold text-white">📋 Aktivitás napló</h2>
               <button
                 onClick={() => setShowActivity(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-white"
               >
                 ✕
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {activities.length === 0 && (
-                <p className="text-sm text-gray-400">Még nincs aktivitás.</p>
+                <p className="text-sm text-gray-500 text-center mt-4">
+                  Még nincs aktivitás.
+                </p>
               )}
               {activities.map((activity) => (
                 <div key={activity.id} className="flex gap-3 items-start">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {activity.userName?.[0]?.toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-300">
                       {activityText(activity)}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {new Date(activity.createdAt).toLocaleString("hu-HU")}
                     </p>
                   </div>
@@ -519,8 +448,116 @@ export default function BoardPage() {
           </div>
         </div>
       )}
-
-      {/* Kártya részletek modal */}
+      {/* Tagok oldalsáv */}
+      {showMembers && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowMembers(false)}
+          />
+          <div className="relative bg-gray-900 w-full max-w-sm h-full shadow-2xl flex flex-col border-l border-gray-700">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h2 className="font-semibold text-white">👥 Tagok kezelése</h2>
+              <button
+                onClick={() => setShowMembers(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 border-b border-gray-700">
+              <p className="text-xs text-gray-400 mb-2">
+                Tag hozzáadása email alapján:
+              </p>
+              <form onSubmit={handleAddMember} className="flex gap-2">
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
+                />
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+                >
+                  +
+                </button>
+              </form>
+              {memberError && (
+                <p className="text-red-400 text-xs mt-1">{memberError}</p>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+              {/* Tulajdonos */}
+              <div className="flex items-center justify-between p-3 bg-gray-800 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-400 flex items-center justify-center text-xs font-bold">
+                    {session?.user?.name?.[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      {session?.user?.name}
+                    </p>
+                    <p className="text-xs text-gray-400">Tulajdonos</p>
+                  </div>
+                </div>
+                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full font-medium">
+                  👑 Owner
+                </span>
+              </div>
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-3 bg-gray-800 rounded-xl gap-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {member.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {member.name}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {member.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {userRole === "owner" && (
+                      <select
+                        value={member.role}
+                        onChange={(e) =>
+                          handleRoleChange(member.userId, e.target.value)
+                        }
+                        className="text-xs bg-gray-700 border border-gray-600 rounded px-1 py-1 text-gray-300 outline-none"
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    )}
+                    {userRole === "owner" && (
+                      <button
+                        onClick={() => handleRemoveMember(member.userId)}
+                        className="text-gray-500 hover:text-red-400 text-xs transition"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {members.length === 0 && (
+                <p className="text-sm text-gray-500 text-center mt-4">
+                  Még nincsenek tagok.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Kártya modal */}
       {selectedCard && (
         <CardModal
           card={selectedCard}
@@ -536,6 +573,6 @@ export default function BoardPage() {
           onDelete={handleCardDelete}
         />
       )}
-    </main>
+    </div>
   );
 }

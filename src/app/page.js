@@ -1,38 +1,31 @@
 "use client";
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-
+import Link from "next/link";
 const COLORS = [
-  "#0079bf",
-  "#d29034",
-  "#519839",
-  "#b04632",
-  "#89609e",
-  "#cd5a91",
-  "#4bbf6b",
-  "#00aecc",
+  { color: "#0079bf", name: "Kék" },
+  { color: "#d29034", name: "Narancs" },
+  { color: "#519839", name: "Zöld" },
+  { color: "#b04632", name: "Piros" },
+  { color: "#89609e", name: "Lila" },
+  { color: "#cd5a91", name: "Rózsaszín" },
+  { color: "#4bbf6b", name: "Menta" },
+  { color: "#00aecc", name: "Cián" },
 ];
-
 export default function Home() {
+  const { data: session } = useSession();
   const [boards, setBoards] = useState([]);
+  const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
-  const [background, setBackground] = useState(COLORS[0]);
+  const [background, setBackground] = useState(COLORS[0].color);
   const [editingBoard, setEditingBoard] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-
   async function fetchBoards() {
     const res = await fetch("/api/boards");
     const data = await res.json();
     setBoards(data);
   }
-  const { data: session } = useSession();
-
-  useEffect(() => {
-    fetchBoards();
-  }, []);
-
   async function fetchNotifications() {
     const res = await fetch("/api/notifications");
     const data = await res.json();
@@ -45,11 +38,9 @@ export default function Home() {
   useEffect(() => {
     fetchBoards();
     fetchNotifications();
-    // Minden 30 másodpercben frissíti az értesítéseket
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
-
   async function handleCreate(e) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -59,7 +50,8 @@ export default function Home() {
       body: JSON.stringify({ title, background }),
     });
     setTitle("");
-    setBackground(COLORS[0]);
+    setBackground(COLORS[0].color);
+    setShowModal(false);
     fetchBoards();
   }
   async function handleDelete(board) {
@@ -80,38 +72,39 @@ export default function Home() {
     setEditingBoard(null);
     fetchBoards();
   }
+  const unreadCount = notifications.filter((n) => !n.read).length;
   return (
-    <main className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-900">
       {/* Fejléc */}
-      <header className="bg-blue-600 text-white px-8 py-4 flex items-center justify-between shadow">
+      <header className="bg-gray-800 border-b border-gray-700 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🎯</span>
-          <h1 className="text-xl font-bold">Volcano L2 Action Tracker</h1>
+          <div className="bg-blue-500 rounded p-1.5">
+            <span className="text-white text-lg font-bold">T</span>
+          </div>
+          <h1 className="text-white text-lg font-bold tracking-tight">
+            Trello Klón
+          </h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-white/80">
-            👤 {session?.user?.name}
-          </span>
-          {/* Értesítés harang */}
+          {/* Értesítések */}
           <div className="relative">
             <button
               onClick={() => {
                 setShowNotifications(!showNotifications);
                 if (!showNotifications) markAllRead();
               }}
-              className="relative text-white hover:bg-white/20 p-2 rounded-lg transition"
+              className="relative text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded-lg transition"
             >
               🔔
-              {notifications.filter((n) => !n.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {notifications.filter((n) => !n.read).length}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {unreadCount}
                 </span>
               )}
             </button>
-            {/* Értesítés dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 top-10 bg-white rounded-xl shadow-xl w-80 z-50 overflow-hidden">
-                <div className="p-3 border-b flex justify-between items-center">
+              <div className="absolute right-0 top-11 bg-white rounded-xl shadow-2xl w-80 z-50 overflow-hidden border border-gray-100">
+                <div className="p-3 border-b flex justify-between items-center bg-gray-50">
                   <h3 className="font-semibold text-gray-800 text-sm">
                     Értesítések
                   </h3>
@@ -131,9 +124,7 @@ export default function Home() {
                   {notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`p-3 border-b text-sm flex gap-2 items-start ${
-                        n.read ? "bg-white" : "bg-blue-50"
-                      }`}
+                      className={`p-3 border-b text-sm flex gap-2 items-start ${n.read ? "bg-white" : "bg-blue-50"}`}
                     >
                       <span className="text-lg">🔔</span>
                       <div>
@@ -156,114 +147,212 @@ export default function Home() {
               </div>
             )}
           </div>
+          {/* User */}
+          <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-3 py-1.5">
+            <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
+              {session?.user?.name?.[0]?.toUpperCase()}
+            </div>
+            <span className="text-sm text-gray-200 hidden sm:block">
+              {session?.user?.name}
+            </span>
+          </div>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition"
+            className="text-sm text-gray-300 hover:text-white hover:bg-gray-700 px-3 py-1.5 rounded-lg transition"
           >
-            Kijelentkezés
+            Kilépés
           </button>
         </div>
       </header>
-      <div className="p-8">
-        {/* Új board form */}
-        <h2 className="text-lg font-semibold text-gray-700 mb-3">
-          Új tábla létrehozása
-        </h2>
-        <form
-          onSubmit={handleCreate}
-          className="bg-white rounded-xl shadow p-4 mb-8 flex flex-col gap-3 max-w-md"
-        >
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Tábla neve..."
-            className="border rounded-lg px-3 py-2 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          {/* Színválasztó */}
-          <div className="flex gap-2 flex-wrap">
-            {COLORS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setBackground(color)}
-                className="w-8 h-8 rounded-full border-4 transition"
-                style={{
-                  backgroundColor: color,
-                  borderColor: background === color ? "#1d4ed8" : "transparent",
-                }}
-              />
-            ))}
+      {/* Tartalom */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Táblák fejléc */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2 text-gray-300">
+            <span>👤</span>
+            <h2 className="font-semibold">Saját táblák</h2>
           </div>
           <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
+            onClick={() => setShowModal(true)}
+            className="bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm px-4 py-2 rounded-lg transition flex items-center gap-2"
           >
-            Létrehozás
+            <span className="text-lg leading-none">+</span>
+            Új tábla
           </button>
-        </form>
-        {/* Board lista */}
-        <h2 className="text-lg font-semibold text-gray-700 mb-3">Táblák</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        </div>
+        {/* Board grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {boards.map((board) => (
             <div
               key={board.id}
-              className="rounded-xl shadow overflow-hidden"
-              style={{ backgroundColor: board.background }}
+              className="group relative rounded-xl overflow-hidden shadow-lg aspect-video"
             >
+              {/* Háttér */}
+              <div
+                className="absolute inset-0"
+                style={{ backgroundColor: board.background }}
+              />
+              {/* Overlay hover-re */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition" />
+              {/* Link */}
               <Link
                 href={`/board/${board.id}`}
-                className="block p-5 text-white font-semibold text-lg hover:opacity-90 transition"
+                className="absolute inset-0 flex items-end p-3"
               >
-                {board.title}
-                {board.userId !== session?.user?.id && (
-                  <span className="block text-xs text-white/70 font-normal mt-1">
-                    👥 Megosztott veled
-                  </span>
-                )}
+                <div>
+                  <p className="text-white font-semibold text-sm drop-shadow">
+                    {board.title}
+                  </p>
+                  {board.userId !== session?.user?.id && (
+                    <p className="text-white/70 text-xs">👥 Megosztott</p>
+                  )}
+                </div>
               </Link>
-              {/* Törlés/szerkesztés csak a tulajdonosnak */}
+              {/* Akció gombok — csak hover-re látszanak */}
               {board.userId === session?.user?.id && (
-                <div className="flex gap-1 px-3 pb-3">
+                <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
                   <button
-                    onClick={() => setEditingBoard({ ...board })}
-                    className="text-white/70 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/20 transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setEditingBoard({ ...board });
+                    }}
+                    className="bg-black/30 hover:bg-black/50 text-white text-xs p-1.5 rounded-lg transition"
                   >
-                    ✎ Szerkesztés
+                    ✎
                   </button>
                   <button
-                    onClick={() => handleDelete(board)}
-                    className="text-white/70 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/20 transition"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDelete(board);
+                    }}
+                    className="bg-black/30 hover:bg-red-500/70 text-white text-xs p-1.5 rounded-lg transition"
                   >
-                    🗑️ Törlés
+                    🗑️
                   </button>
                 </div>
               )}
             </div>
           ))}
+          {/* Új tábla kártya */}
+          <button
+            onClick={() => setShowModal(true)}
+            className="rounded-xl aspect-video bg-gray-700/50 hover:bg-gray-700 border-2 border-dashed border-gray-600 hover:border-gray-500 flex items-center justify-center text-gray-400 hover:text-gray-200 transition group"
+          >
+            <div className="text-center">
+              <p className="text-2xl group-hover:scale-110 transition">+</p>
+              <p className="text-xs mt-1">Új tábla</p>
+            </div>
+          </button>
         </div>
-      </div>
-
-      {/* Szerkesztő modal */}
-      {editingBoard && (
+      </main>
+      {/* Új tábla modal */}
+      {showModal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setEditingBoard(null)}
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-md p-6"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h2 className="text-lg font-bold text-gray-800">
+                Új tábla létrehozása
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            {/* Előnézet */}
+            <div
+              className="w-full h-24 rounded-xl mb-4 flex items-end p-3 transition-all"
+              style={{ backgroundColor: background }}
+            >
+              <p className="text-white font-semibold text-sm drop-shadow">
+                {title || "Tábla neve..."}
+              </p>
+            </div>
+            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">
+                  Tábla neve *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="pl. Marketing, Fejlesztés..."
+                  autoFocus
+                  required
+                  className="w-full border rounded-lg px-3 py-2 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">
+                  Háttérszín
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {COLORS.map(({ color, name }) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setBackground(color)}
+                      title={name}
+                      className="h-10 rounded-lg transition hover:scale-105 relative"
+                      style={{ backgroundColor: color }}
+                    >
+                      {background === color && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-lg">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={!title.trim()}
+                className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Létrehozás
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Szerkesztő modal */}
+      {editingBoard && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setEditingBoard(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">
                 Tábla szerkesztése
               </h2>
               <button
                 onClick={() => setEditingBoard(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
+                className="text-gray-400 hover:text-gray-600"
               >
                 ✕
               </button>
+            </div>
+            {/* Előnézet */}
+            <div
+              className="w-full h-24 rounded-xl mb-4 flex items-end p-3 transition-all"
+              style={{ backgroundColor: editingBoard.background }}
+            >
+              <p className="text-white font-semibold text-sm drop-shadow">
+                {editingBoard.title}
+              </p>
             </div>
             <form onSubmit={handleEdit} className="flex flex-col gap-4">
               <input
@@ -272,38 +361,39 @@ export default function Home() {
                 onChange={(e) =>
                   setEditingBoard({ ...editingBoard, title: e.target.value })
                 }
-                className="border rounded-lg px-3 py-2 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg px-3 py-2 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
               />
-              <div className="flex gap-2 flex-wrap">
-                {COLORS.map((color) => (
+              <div className="grid grid-cols-4 gap-2">
+                {COLORS.map(({ color, name }) => (
                   <button
                     key={color}
                     type="button"
                     onClick={() =>
                       setEditingBoard({ ...editingBoard, background: color })
                     }
-                    className="w-8 h-8 rounded-full border-4 transition"
-                    style={{
-                      backgroundColor: color,
-                      borderColor:
-                        editingBoard.background === color
-                          ? "#1d4ed8"
-                          : "transparent",
-                    }}
-                  />
+                    title={name}
+                    className="h-10 rounded-lg transition hover:scale-105 relative"
+                    style={{ backgroundColor: color }}
+                  >
+                    {editingBoard.background === color && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-lg">
+                        ✓
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setEditingBoard(null)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="flex-1 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition"
                 >
                   Mégse
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium transition"
                 >
                   Mentés
                 </button>
@@ -312,6 +402,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
