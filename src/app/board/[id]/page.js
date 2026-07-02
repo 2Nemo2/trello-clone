@@ -118,7 +118,7 @@ export default function BoardPage() {
   // Megkeresi, melyik listában van egy adott kártya ID
   function findListIdByCardId(cardId) {
     for (const listId in cardsByList) {
-      if (cardsByList[listId].some((c) => c._id === cardId)) {
+      if (cardsByList[listId].some((c) => c.id === cardId)) {
         return listId;
       }
     }
@@ -129,7 +129,7 @@ export default function BoardPage() {
     const { active } = event;
     const listId = findListIdByCardId(active.id);
     if (listId) {
-      const card = cardsByList[listId].find((c) => c._id === active.id);
+      const card = cardsByList[listId].find((c) => c.id === active.id);
       setActiveCard(card);
     }
   }
@@ -137,15 +137,15 @@ export default function BoardPage() {
   function handleDragOver(event) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const isActiveList = lists.some((l) => l._id === active.id);
+    const isActiveList = lists.some((l) => l.id === active.id);
     if (!isActiveList) return;
     let overListId = over.id;
-    const isOverCard = !lists.some((l) => l._id === over.id);
+    const isOverCard = !lists.some((l) => l.id === over.id);
     if (isOverCard) {
       overListId = findListIdByCardId(over.id);
     }
-    const oldIndex = lists.findIndex((l) => l._id === active.id);
-    const newIndex = lists.findIndex((l) => l._id === overListId);
+    const oldIndex = lists.findIndex((l) => l.id === active.id);
+    const newIndex = lists.findIndex((l) => l.id === overListId);
     if (oldIndex === -1 || newIndex === -1) return;
     setLists((prev) => arrayMove(prev, oldIndex, newIndex));
   }
@@ -153,11 +153,11 @@ export default function BoardPage() {
   function handleCardDelete(card) {
     setCardsForList(
       card.listId,
-      (cardsByList[card.listId] || []).filter((c) => c._id !== card._id),
+      (cardsByList[card.listId] || []).filter((c) => c.id !== card.id),
     );
   }
   function handleListDelete(listId) {
-    setLists((prev) => prev.filter((l) => l._id !== listId));
+    setLists((prev) => prev.filter((l) => l.id !== listId));
     setCardsByList((prev) => {
       const updated = { ...prev };
       delete updated[listId];
@@ -201,17 +201,17 @@ export default function BoardPage() {
     if (!over || active.id === over.id) return;
 
     // Lista mozgatás?
-    const isActiveList = lists.some((l) => l._id === active.id);
+    const isActiveList = lists.some((l) => l.id === active.id);
     if (isActiveList) {
-      const oldIndex = lists.findIndex((l) => l._id === active.id);
+      const oldIndex = lists.findIndex((l) => l.id === active.id);
 
       // Ha over egy kártya (nem lista), akkor annak a listáját keressük meg
       let overListId = over.id;
-      const isOverCard = !lists.some((l) => l._id === over.id);
+      const isOverCard = !lists.some((l) => l.id === over.id);
       if (isOverCard) {
         overListId = findListIdByCardId(over.id);
       }
-      const newIndex = lists.findIndex((l) => l._id === overListId);
+      const newIndex = lists.findIndex((l) => l.id === overListId);
       if (oldIndex === -1 || newIndex === -1) return;
       const newLists = arrayMove(lists, oldIndex, newIndex);
       setLists(newLists);
@@ -219,7 +219,7 @@ export default function BoardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lists: newLists.map((l, i) => ({ _id: l._id, order: i })),
+          lists: newLists.map((l, i) => ({ id: l.id, order: i })),
         }),
       });
       return;
@@ -233,8 +233,8 @@ export default function BoardPage() {
     const overListId = findListIdByCardId(over.id) || over.id;
     const activeCards = cardsByList[activeListId] || [];
     const overCards = cardsByList[overListId] || [];
-    const oldIndex = activeCards.findIndex((c) => c._id === active.id);
-    const newIndex = overCards.findIndex((c) => c._id === over.id);
+    const oldIndex = activeCards.findIndex((c) => c.id === active.id);
+    const newIndex = overCards.findIndex((c) => c.id === over.id);
     if (activeListId === overListId) {
       // Ugyanazon a listán belüli mozgatás
       const newCards = arrayMove(activeCards, oldIndex, newIndex);
@@ -243,13 +243,13 @@ export default function BoardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cards: newCards.map((c, index) => ({ _id: c._id, order: index })),
+          cards: newCards.map((c, index) => ({ id: c.id, order: index })),
         }),
       });
     } else {
       // Listák közötti mozgatás
       const movedCard = { ...activeCards[oldIndex], listId: overListId };
-      const newActiveCards = activeCards.filter((c) => c._id !== active.id);
+      const newActiveCards = activeCards.filter((c) => c.id !== active.id);
       const newOverCards = [...overCards];
       // Ha kártya fölé ejtettük, oda szúrjuk be, különben a végére
       const insertIndex = newIndex === -1 ? newOverCards.length : newIndex;
@@ -264,12 +264,12 @@ export default function BoardPage() {
         body: JSON.stringify({
           cards: [
             ...newActiveCards.map((c, i) => ({
-              _id: c._id,
+              id: c.id,
               order: i,
               listId: activeListId,
             })),
             ...newOverCards.map((c, i) => ({
-              _id: c._id,
+              id: c.id,
               order: i,
               listId: overListId,
             })),
@@ -321,15 +321,15 @@ export default function BoardPage() {
       >
         {/* Listák vízszintes sorba rendezése */}
         <SortableContext
-          items={lists.map((l) => l._id)}
+          items={lists.map((l) => l.id)}
           strategy={horizontalListSortingStrategy}
         >
           <div className="flex gap-4 overflow-x-auto items-start">
             {lists.map((list) => (
               <List
-                key={list._id}
+                key={list.id}
                 list={list}
-                cards={cardsByList[list._id] || []}
+                cards={cardsByList[list.id] || []}
                 setCardsForList={setCardsForList}
                 onCardClick={(card) => setSelectedCard(card)}
                 onListDelete={handleListDelete}
@@ -501,7 +501,7 @@ export default function BoardPage() {
                 <p className="text-sm text-gray-400">Még nincs aktivitás.</p>
               )}
               {activities.map((activity) => (
-                <div key={activity._id} className="flex gap-3 items-start">
+                <div key={activity.id} className="flex gap-3 items-start">
                   <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {activity.userName?.[0]?.toUpperCase()}
                   </div>
@@ -529,7 +529,7 @@ export default function BoardPage() {
             setCardsForList(
               updated.listId,
               (cardsByList[updated.listId] || []).map((c) =>
-                c._id === updated._id ? updated : c,
+                c.id === updated.id ? updated : c,
               ),
             );
           }}

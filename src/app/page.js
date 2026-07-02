@@ -64,12 +64,12 @@ export default function Home() {
   }
   async function handleDelete(board) {
     if (!confirm(`Törlöd a "${board.title}" táblát?`)) return;
-    await fetch(`/api/boards/${board._id}`, { method: "DELETE" });
+    await fetch(`/api/boards/${board.id}`, { method: "DELETE" });
     fetchBoards();
   }
   async function handleEdit(e) {
     e.preventDefault();
-    await fetch(`/api/boards/${editingBoard._id}`, {
+    await fetch(`/api/boards/${editingBoard.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -130,7 +130,7 @@ export default function Home() {
                   )}
                   {notifications.map((n) => (
                     <div
-                      key={n._id}
+                      key={n.id}
                       className={`p-3 border-b text-sm flex gap-2 items-start ${
                         n.read ? "bg-white" : "bg-blue-50"
                       }`}
@@ -207,12 +207,12 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {boards.map((board) => (
             <div
-              key={board._id}
+              key={board.id}
               className="rounded-xl shadow overflow-hidden"
               style={{ backgroundColor: board.background }}
             >
               <Link
-                href={`/board/${board._id}`}
+                href={`/board/${board.id}`}
                 className="block p-5 text-white font-semibold text-lg hover:opacity-90 transition"
               >
                 {board.title}

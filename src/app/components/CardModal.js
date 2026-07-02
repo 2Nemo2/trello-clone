@@ -35,7 +35,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
   }, [onClose]);
   async function handleSave() {
     setSaving(true);
-    const res = await fetch(`/api/cards/${card._id}`, {
+    const res = await fetch(`/api/cards/${card.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, description, dueDate, assignees, labels }),
@@ -48,7 +48,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
   async function handleAddComment(e) {
     e.preventDefault();
     if (!newComment.trim()) return;
-    const res = await fetch(`/api/cards/${card._id}/comments`, {
+    const res = await fetch(`/api/cards/${card.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: newComment }),
@@ -58,7 +58,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
     setNewComment("");
   }
   async function handleDeleteComment(commentId) {
-    const res = await fetch(`/api/cards/${card._id}/comments`, {
+    const res = await fetch(`/api/cards/${card.id}/comments`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commentId }),
@@ -67,11 +67,11 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
     setComments(updated.comments);
   }
   function toggleAssignee(user) {
-    const isAssigned = assignees.some((a) => a.userId === user._id);
+    const isAssigned = assignees.some((a) => a.userId === user.id);
     if (isAssigned) {
-      setAssignees(assignees.filter((a) => a.userId !== user._id));
+      setAssignees(assignees.filter((a) => a.userId !== user.id));
     } else {
-      setAssignees([...assignees, { userId: user._id, userName: user.name }]);
+      setAssignees([...assignees, { userId: user.id, userName: user.name }]);
     }
   }
   function toggleLabel(labelText) {
@@ -185,10 +185,10 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
             </label>
             <div className="flex flex-col gap-1">
               {users.map((user) => {
-                const isAssigned = assignees.some((a) => a.userId === user._id);
+                const isAssigned = assignees.some((a) => a.userId === user.id);
                 return (
                   <button
-                    key={user._id}
+                    key={user.id}
                     type="button"
                     onClick={() => toggleAssignee(user)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition text-left ${
@@ -211,7 +211,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
           <div className="flex justify-end gap-2">
             <button
               onClick={async () => {
-                await fetch(`/api/cards/${card._id}`, { method: "DELETE" });
+                await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
                 onDelete(card);
                 onClose();
               }}
@@ -258,7 +258,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
                 <p className="text-sm text-gray-400">Még nincs komment.</p>
               )}
               {[...comments].reverse().map((comment) => (
-                <div key={comment._id} className="bg-gray-50 rounded-lg p-3">
+                <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-medium text-blue-600">
                       👤 {comment.userName}
@@ -270,7 +270,7 @@ export default function CardModal({ card, onClose, onSave, onDelete }) {
                         )}
                       </span>
                       <button
-                        onClick={() => handleDeleteComment(comment._id)}
+                        onClick={() => handleDeleteComment(comment.id)}
                         className="text-xs text-gray-400 hover:text-red-500"
                       >
                         ✕

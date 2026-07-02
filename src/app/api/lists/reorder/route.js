@@ -1,11 +1,13 @@
-import { connectDB } from "@/lib/mongodb";
-import List from "@/models/List";
+import prisma from "@/lib/prisma";
 export async function POST(request) {
-  await connectDB();
   const body = await request.json();
-  const updates = body.lists.map(({ _id, order }) =>
-    List.findByIdAndUpdate(_id, { order }),
+  await Promise.all(
+    body.lists.map(({ id, order }) =>
+      prisma.list.update({
+        where: { id },
+        data: { order },
+      }),
+    ),
   );
-  await Promise.all(updates);
   return Response.json({ success: true });
 }

@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(cuid())
+  name              String
+  email             String         @unique
+  password          String
+  emailVerified     Boolean        @default(false)
+  verificationToken String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  ownedBoards       Board[]        @relation("BoardOwner")
+  boardMembers      BoardMember[]
+  comments          Comment[]
+  notifications     Notification[]
+  activities        Activity[]
+}
+
+model Board {
+  id            String         @id @default(cuid())
+  title         String
+  background    String         @default("#0079bf")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  userId        String
+  owner         User           @relation("BoardOwner", fields: [userId], references: [id])
+  members       BoardMember[]
+  lists         List[]
+  activities    Activity[]
+  notifications Notification[]
+}
+
+model BoardMember {
+  id      String  @id @default(cuid())
+  role    String  @default("member") // member, admin
+  name    String?
+  email   String?
+  userId  String
+  boardId String
+  user    User    @relation(fields: [userId], references: [id])
+  board   Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
+}
+
+model List {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+}
+
+model Card {
+  id          String         @id @default(cuid())
+  title       String
+  description String         @default("")
+  order       Int            @default(0)
+  dueDate     DateTime?
+  labels      String         @default("") // JSON string tömbként tárolva
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  listId      String
+  list        List           @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignees   CardAssignee[]
+  comments    Comment[]
+}
+
+model CardAssignee {
+  id       String @id @default(cuid())
+  userId   String
+  userName String
+  cardId   String
+  card     Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+  userId    String
+  userName  String
+  user      User     @relation(fields: [userId], references: [id])
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  message     String
+  type        String
+  read        Boolean  @default(false)
+  triggeredBy String?
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  boardId     String?
+  board       Board?   @relation(fields: [boardId], references: [id])
+  cardId      String?
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String
+  data      String   @default("{}") // JSON string
+  createdAt DateTime @default(now())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId    String
+  userName  String
+  user      User     @relation(fields: [userId], references: [id])
+}

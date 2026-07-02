@@ -9,7 +9,7 @@ export default function Card({ card, onClick }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card._id });
+  } = useSortable({ id: card.id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,

@@ -1,29 +1,29 @@
-import { connectDB } from "@/lib/mongodb";
-import List from "@/models/List";
-import { logActivity } from "@/lib/activity";
+import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-
-// GET /api/lists?boardId=xxx → egy board listáinak lekérése
+import { logActivity } from "@/lib/activity";
 export async function GET(request) {
-  await connectDB();
   const { searchParams } = new URL(request.url);
   const boardId = searchParams.get("boardId");
-  const lists = await List.find({ boardId }).sort({ order: 1 });
+  const lists = await prisma.list.findMany({
+    where: { boardId },
+    orderBy: { order: "asc" },
+  });
   return Response.json(lists);
 }
-// POST /api/lists → új lista létrehozása
 export async function POST(request) {
-  await connectDB();
-  const body = await request.json();
-  // Megnézzük, hány lista van már ezen a boardon, hogy a végére kerüljön
-  const count = await List.countDocuments({ boardId: body.boardId });
-  const list = await List.create({
-    title: body.title,
-    boardId: body.boardId,
-    order: count,
-  });
   const session = await getServerSession(authOptions);
+  const body = await request.json();
+  const count = await prisma.list.count({
+    where: { boardId: body.boardId },
+  });
+  const list = await prisma.list.create({
+    data: {
+      title: body.title,
+      boardId: body.boardId,
+      order: count,
+    },
+  });
   if (session) {
     await logActivity({
       boardId: body.boardId,

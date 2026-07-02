@@ -1,46 +1,79 @@
-import { connectDB } from "@/lib/mongodb";
-import Card from "@/models/Card";
-import Board from "@/models/Board";
-import List from "@/models/List";
+import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { logActivity } from "@/lib/activity";
 import { sendNotification } from "@/lib/notify";
-
 export async function PATCH(request, { params }) {
-  await connectDB();
   const session = await getServerSession(authOptions);
   const { id } = await params;
   const body = await request.json();
-  const oldCard = await Card.findById(id);
-  const card = await Card.findByIdAndUpdate(
-    id,
-    {
+  const oldCard = await prisma.card.findUnique({
+    where: { id },
+    include: { assignees: true },
+  });
+  // Assignee-k frissítése: töröljük a régieket, hozzáadjuk az újakat
+  await prisma.cardAssignee.deleteMany({ where: { cardId: id } });
+  const card = await prisma.card.update({
+    where: { id },
+    data: {
       title: body.title,
       description: body.description,
-      dueDate: body.dueDate || null,
-      assignees: body.assignees || [],
-      labels: body.labels || [],
+      dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      labels: JSON.stringify(body.labels || []),
+      assignees: {
+        create: (body.assignees || []).map((a) => ({
+          userId: a.userId,
+          userName: a.userName,
+        })),
+      },
     },
-    { returnDocument: "after" },
-  );
-  const list = await List.findById(card.listId);
+    include: {
+      assignees: true,
+      comments: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  const list = await prisma.list.findUnique({ where: { id: card.listId } });
   if (list && session) {
+    const oldAssigneeIds = oldCard.assignees.map((a) => a.userId);
     const newAssignees = (body.assignees || []).filter(
-      (a) =>
-        !oldCard.assignees?.some((old) => old.userId?.toString() === a.userId),
+      (a) => !oldAssigneeIds.includes(a.userId),
     );
     if (newAssignees.length > 0) {
       const newUserIds = newAssignees
         .map((a) => a.userId)
-        .filter((id) => id !== session.user.id);
+        .filter((uid) => uid !== session.user.id);
       if (newUserIds.length > 0) {
         await sendNotification({
           userIds: newUserIds,
           type: "card_assigned",
           data: { triggeredBy: session.user.name, cardTitle: card.title },
           boardId: list.boardId,
-          cardId: card._id,
+          cardId: card.id,
+        });
+      }
+      // Új assignee-kat board memberként is hozzáadjuk
+      const board = await prisma.board.findUnique({
+        where: { id: list.boardId },
+        include: { members: true },
+      });
+      const existingMemberIds = board.members.map((m) => m.userId);
+      const newMembers = newAssignees.filter(
+        (a) =>
+          !existingMemberIds.includes(a.userId) && a.userId !== board.userId,
+      );
+      for (const member of newMembers) {
+        const user = await prisma.user.findUnique({
+          where: { id: member.userId },
+          select: { name: true, email: true },
+        });
+        await prisma.boardMember.create({
+          data: {
+            userId: member.userId,
+            boardId: list.boardId,
+            role: "member",
+            name: user?.name,
+            email: user?.email,
+          },
         });
       }
       await logActivity({
@@ -53,19 +86,6 @@ export async function PATCH(request, { params }) {
           addedUsers: newAssignees.map((a) => a.userName),
         },
       });
-      // Board lekérése az existing members ellenőrzéséhez
-      const board = await Board.findById(list.boardId);
-      const existingMemberIds = (board.members || []).map((m) =>
-        m.userId?.toString(),
-      );
-      const newMembers = (body.assignees || [])
-        .filter((a) => !existingMemberIds.includes(a.userId?.toString()))
-        .map((a) => ({ userId: a.userId, role: "member", name: a.userName }));
-      if (newMembers.length > 0) {
-        await Board.findByIdAndUpdate(list.boardId, {
-          $push: { members: { $each: newMembers } },
-        });
-      }
     } else {
       await logActivity({
         boardId: list.boardId,
@@ -76,16 +96,19 @@ export async function PATCH(request, { params }) {
       });
     }
   }
-  return Response.json(card);
+  return Response.json({
+    ...card,
+    labels: JSON.parse(card.labels || "[]"),
+  });
 }
-
 export async function DELETE(request, { params }) {
-  await connectDB();
   const session = await getServerSession(authOptions);
   const { id } = await params;
-  const card = await Card.findById(id);
-  const list = card ? await List.findById(card.listId) : null;
-  await Card.findByIdAndDelete(id);
+  const card = await prisma.card.findUnique({ where: { id } });
+  const list = card
+    ? await prisma.list.findUnique({ where: { id: card.listId } })
+    : null;
+  await prisma.card.delete({ where: { id } });
   if (list && session) {
     await logActivity({
       boardId: list.boardId,

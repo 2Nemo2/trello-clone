@@ -19,7 +19,7 @@ export default function List({
 }) {
   const [newCardTitle, setNewCardTitle] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const { setNodeRef: setDropRef } = useDroppable({ id: list._id });
+  const { setNodeRef: setDropRef } = useDroppable({ id: list.id });
   const {
     attributes,
     listeners,
@@ -27,7 +27,7 @@ export default function List({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: list._id });
+  } = useSortable({ id: list.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -36,20 +36,20 @@ export default function List({
   };
 
   async function fetchCards() {
-    const res = await fetch(`/api/cards?listId=${list._id}`);
+    const res = await fetch(`/api/cards?listId=${list.id}`);
     const data = await res.json();
-    setCardsForList(list._id, data);
+    setCardsForList(list.id, data);
   }
   useEffect(() => {
     fetchCards();
-  }, [list._id]);
+  }, [list.id]);
   async function handleCreateCard(e) {
     e.preventDefault();
     if (!newCardTitle.trim()) return;
     await fetch("/api/cards", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newCardTitle, listId: list._id }),
+      body: JSON.stringify({ title: newCardTitle, listId: list.id }),
     });
     setNewCardTitle("");
     fetchCards();
@@ -73,8 +73,8 @@ export default function List({
           <button
             onClick={async () => {
               if (!confirm(`Törlöd a "${list.title}" listát?`)) return;
-              await fetch(`/api/lists/${list._id}`, { method: "DELETE" });
-              onListDelete(list._id);
+              await fetch(`/api/lists/${list.id}`, { method: "DELETE" });
+              onListDelete(list.id);
             }}
             className="text-gray-400 hover:text-red-500 text-sm px-1"
           >
@@ -84,12 +84,12 @@ export default function List({
       </div>
       {/* Kártyák - sorba rendezhető terület */}
       <SortableContext
-        items={cards.map((c) => c._id)}
+        items={cards.map((c) => c.id)}
         strategy={verticalListSortingStrategy}
       >
         <div ref={setDropRef} className="flex flex-col gap-2 mb-2 min-h-[10px]">
           {cards.map((card) => (
-            <Card key={card._id} card={card} onClick={onCardClick} />
+            <Card key={card.id} card={card} onClick={onCardClick} />
           ))}
         </div>
       </SortableContext>

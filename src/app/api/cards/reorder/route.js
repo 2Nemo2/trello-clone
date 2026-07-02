@@ -1,13 +1,16 @@
-import { connectDB } from "@/lib/mongodb";
-import Card from "@/models/Card";
-
-// POST /api/cards/reorder → kártyák új sorrendjének mentése
+import prisma from "@/lib/prisma";
 export async function POST(request) {
-  await connectDB();
   const body = await request.json();
-  const updates = body.cards.map(({ _id, order, listId }) =>
-    Card.findByIdAndUpdate(_id, { order, ...(listId && { listId }) }),
+  await Promise.all(
+    body.cards.map(({ id, order, listId }) =>
+      prisma.card.update({
+        where: { id },
+        data: {
+          order,
+          ...(listId && { listId }),
+        },
+      }),
+    ),
   );
-  await Promise.all(updates);
   return Response.json({ success: true });
 }

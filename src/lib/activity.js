@@ -1,5 +1,5 @@
-import { connectDB } from "@/lib/mongodb";
-import Activity from "@/models/Activity";
+import prisma from "@/lib/prisma";
+
 export async function logActivity({
   boardId,
   userId,
@@ -7,6 +7,13 @@ export async function logActivity({
   type,
   data = {},
 }) {
-  await connectDB();
-  await Activity.create({ boardId, userId, userName, type, data });
+  await prisma.activity.create({
+    data: {
+      boardId,
+      userId,
+      userName,
+      type,
+      data: JSON.stringify(data),
+    },
+  });
 }

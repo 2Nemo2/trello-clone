@@ -1,36 +1,50 @@
-import { connectDB } from "@/lib/mongodb";
-import Card from "@/models/Card";
-import List from "@/models/List";
+import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { logActivity } from "@/lib/activity";
 export async function GET(request) {
-  await connectDB();
   const { searchParams } = new URL(request.url);
   const listId = searchParams.get("listId");
-  const cards = await Card.find({ listId }).sort({ order: 1 });
-  return Response.json(cards);
+  const cards = await prisma.card.findMany({
+    where: { listId },
+    include: {
+      assignees: true,
+      comments: { orderBy: { createdAt: "asc" } },
+    },
+    orderBy: { order: "asc" },
+  });
+  // labels JSON string → tömb
+  const parsed = cards.map((c) => ({
+    ...c,
+    labels: JSON.parse(c.labels || "[]"),
+  }));
+  return Response.json(parsed);
 }
 export async function POST(request) {
-  await connectDB();
   const session = await getServerSession(authOptions);
   const body = await request.json();
-  const count = await Card.countDocuments({ listId: body.listId });
-  const card = await Card.create({
-    title: body.title,
-    listId: body.listId,
-    order: count,
+  const count = await prisma.card.count({
+    where: { listId: body.listId },
   });
-  // Megkeressük a boardId-t
-  const list = await List.findById(body.listId);
-  if (list && session) {
-    await logActivity({
-      boardId: list.boardId,
-      userId: session.user.id,
-      userName: session.user.name,
-      type: "card_created",
-      data: { cardTitle: body.title, listTitle: list.title },
-    });
+  const card = await prisma.card.create({
+    data: {
+      title: body.title,
+      listId: body.listId,
+      order: count,
+    },
+    include: { assignees: true, comments: true },
+  });
+  if (session) {
+    const list = await prisma.list.findUnique({ where: { id: body.listId } });
+    if (list) {
+      await logActivity({
+        boardId: list.boardId,
+        userId: session.user.id,
+        userName: session.user.name,
+        type: "card_created",
+        data: { cardTitle: body.title, listTitle: list.title },
+      });
+    }
   }
-  return Response.json(card, { status: 201 });
+  return Response.json({ ...card, labels: [] }, { status: 201 });
 }

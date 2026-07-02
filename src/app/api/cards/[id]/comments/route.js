@@ -1,32 +1,30 @@
-import { connectDB } from "@/lib/mongodb";
-import Card from "@/models/Card";
-import List from "@/models/List";
+import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { logActivity } from "@/lib/activity";
-
+import { sendNotification } from "@/lib/notify";
 export async function POST(request, { params }) {
-  await connectDB();
   const session = await getServerSession(authOptions);
   if (!session)
     return Response.json({ error: "Nincs bejelentkezve!" }, { status: 401 });
   const { id } = await params;
   const body = await request.json();
-  const card = await Card.findByIdAndUpdate(
-    id,
-    {
-      $push: {
-        comments: {
-          text: body.text,
-          userId: session.user.id,
-          userName: session.user.name,
-        },
-      },
+  const comment = await prisma.comment.create({
+    data: {
+      text: body.text,
+      userId: session.user.id,
+      userName: session.user.name,
+      cardId: id,
     },
-    { returnDocument: "after" },
-  );
-  // Aktivitás logolás
-  const list = await List.findById(card.listId);
+  });
+  const card = await prisma.card.findUnique({
+    where: { id },
+    include: {
+      assignees: true,
+      comments: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  const list = await prisma.list.findUnique({ where: { id: card.listId } });
   if (list) {
     await logActivity({
       boardId: list.boardId,
@@ -35,12 +33,10 @@ export async function POST(request, { params }) {
       type: "comment_added",
       data: { cardTitle: card.title, text: body.text },
     });
-  }
-
-  if (card.assignees?.length > 0) {
+    // Értesítés az assignee-knak
     const otherAssigneeIds = card.assignees
-      .map((a) => a.userId?.toString())
-      .filter((id) => id !== session.user.id);
+      .map((a) => a.userId)
+      .filter((uid) => uid !== session.user.id);
     if (otherAssigneeIds.length > 0) {
       await sendNotification({
         userIds: otherAssigneeIds,
@@ -51,24 +47,33 @@ export async function POST(request, { params }) {
           text: body.text,
         },
         boardId: list.boardId,
-        cardId: card._id,
+        cardId: id,
       });
     }
   }
-
-  return Response.json(card);
+  return Response.json({
+    ...card,
+    labels: JSON.parse(card.labels || "[]"),
+  });
 }
 export async function DELETE(request, { params }) {
-  await connectDB();
   const session = await getServerSession(authOptions);
   if (!session)
     return Response.json({ error: "Nincs bejelentkezve!" }, { status: 401 });
   const { id } = await params;
   const { commentId } = await request.json();
-  const card = await Card.findByIdAndUpdate(
-    id,
-    { $pull: { comments: { _id: commentId, userId: session.user.id } } },
-    { returnDocument: "after" },
-  );
-  return Response.json(card);
+  await prisma.comment.deleteMany({
+    where: { id: commentId, userId: session.user.id },
+  });
+  const card = await prisma.card.findUnique({
+    where: { id },
+    include: {
+      assignees: true,
+      comments: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  return Response.json({
+    ...card,
+    labels: JSON.parse(card.labels || "[]"),
+  });
 }
